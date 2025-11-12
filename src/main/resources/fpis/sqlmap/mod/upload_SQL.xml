@@ -1,0 +1,1792 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd" >
+<sqlMap namespace="FPIS_MOD_UPLOAD">
+	<typeAlias  alias="UpMast" type="fpis.common.vo.up.UpMastVO"/>
+	<typeAlias  alias="ModZIP" type="fpis.mod.upload.vo.ModZIP"/>
+	
+	<typeAlias alias="FpisModUploadListSearchVO" type="fpis.mod.upload.web.FpisModUploadListSearchVO"/>
+	
+	<typeAlias  alias="UplMastVO" type="fpis.common.vo.mod.UplMastVO"/>
+	<typeAlias  alias="UplClientVO" type="fpis.common.vo.mod.UplClientVO"/>
+	<typeAlias  alias="UplContractVO" type="fpis.common.vo.mod.UplContractVO"/>
+	<typeAlias  alias="UplOperateVO" type="fpis.common.vo.mod.UplOperateVO"/>
+	<typeAlias  alias="UplTrustVO" type="fpis.common.vo.mod.UplTrustVO"/>
+	<typeAlias  alias="checkRegModifyAllowVO" type="fpis.common.vo.mod.CheckRegModifyAllowVO"/> <!-- 2018. 03. 07. written by dyahn 신고허가여부 VO  -->
+    <typeAlias  alias="MangCodeVO" type="fpis.mod.upload.vo.MangCodeVO"/> <!-- 2021. 01. 28. pch 망사업자 현황 VO  -->
+    <typeAlias  alias="MassOrderUploadVO" type="fpis.reg.mass.service.MassOrderUploadVO"/> <!-- 2022. 11. 09. jwchoi 웹대량실적 업로드 파일 현황 VO  -->
+
+    <resultMap id="ContractInfoVO" class="fpis.reg.mass.service.ContractInfoForSmalling">
+        <result property="contractCount" column="CONTRACTCOUNT" columnIndex="1"/>
+        <result property="cont_m_key" column="CONT_M_KEY" columnIndex="2"/>
+    </resultMap>
+	<!--
+	<insert id="FpisModUploadDAO.insertUpMast" parameterClass="UpMast">
+	
+	</insert>
+	
+	 <select id="FpisModUploadDAO.countMasterList" parameterClass="FpisModUploadListSearchVO" resultClass="Integer">
+		SELECT 
+			COUNT(*)
+		FROM UPL_MAST
+		WHERE USR_MST_KEY = #usr_mst_key#
+		AND   DEL_FLAG = 'N'
+		ORDER BY REG_DATE DESC
+	</select>
+	<select id="FpisModUploadDAO.countMasterListByUserID" parameterClass="FpisModUploadListSearchVO" resultClass="Integer">
+		SELECT 
+			COUNT(*)
+		FROM UPL_MAST
+		WHERE 1 = 1
+		AND   DEL_FLAG = 'N'
+		<isNotNull property="user_id">
+			<isNotEmpty property="user_id" prepend="AND">
+			USER_ID = #user_id#
+			</isNotEmpty>
+		</isNotNull>
+		ORDER BY REG_DATE DESC
+	</select>	
+	<select id="FpisModUploadDAO.selectMasterList" parameterClass="FpisModUploadListSearchVO" resultClass="UplMastVO">
+		SELECT a.*
+		FROM 
+		(
+			SELECT ROWNUM AS r_num ,
+				   a.*
+			FROM
+			(
+				SELECT 
+					*
+				FROM UPL_MAST
+				WHERE USR_MST_KEY = #usr_mst_key#
+				AND   DEL_FLAG = 'N'
+				ORDER BY REG_DATE DESC
+			) a WHERE  ROWNUM <![CDATA[  < ]]> #e_row#
+		) a WHERE a.R_NUM   <![CDATA[ > ]]>  #s_row#
+	</select>
+	<select id="FpisModUploadDAO.selectMasterListByUserID" parameterClass="FpisModUploadListSearchVO" resultClass="UplMastVO">
+		SELECT a.*
+		FROM 
+		(
+			SELECT ROWNUM AS r_num ,
+				   a.*
+			FROM
+			(
+				SELECT 
+					*
+				FROM UPL_MAST
+				WHERE 1 = 1
+				AND   DEL_FLAG = 'N'
+				<isNotNull property="user_id">
+					<isNotEmpty property="user_id" prepend="AND">
+					USER_ID = #user_id#
+					</isNotEmpty>
+				</isNotNull>
+				ORDER BY REG_DATE DESC
+			) a WHERE  ROWNUM <![CDATA[  < ]]> #e_row#
+		) a WHERE a.R_NUM   <![CDATA[ > ]]>  #s_row#
+	</select>	
+	
+	<select id="FpisModUploadDAO.selectClient" parameterClass="String" resultClass="UplClientVO">
+		SELECT 
+			B.UP_MST_KEY, 
+			B.T_COMP_MST_KEY,
+			B.COMP_CORP_NUM,
+			B.COMP_BSNS_NUM,
+			B.COMP_NM,
+			B.COMP_CLS
+		  FROM ( 
+				SELECT UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,
+				       MAX(CLS1) AS CLS1,
+				       MAX(CLS2) AS CLS2,
+				       MAX(CLS3) AS CLS3
+				  FROM 
+				  (
+						SELECT UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,
+						       DECODE(CLS,'1',ERR_CNT, 0) AS CLS1,
+						       DECODE(CLS,'2',ERR_CNT, 0) AS CLS2,
+						       DECODE(CLS,'3',ERR_CNT, 0) AS CLS3
+						  FROM (
+									select '1' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,1 AS ERR_CNT
+									  from UPL_CONTRACT
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+									UNION ALL
+									SELECT '2' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY, COUNT(*) AS ERR_CNT
+										FROM UPL_OPERATE
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+									UNION ALL	
+									SELECT '3' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY, COUNT(*) AS ERR_CNT
+									  FROM UPL_TRUST
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+						  	   )
+				  )
+				GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+		       ) A,
+		       UPL_CLIENT B
+		WHERE A.UP_MST_KEY = #up_mst_key#
+		  AND A.UP_MST_KEY = B.UP_MST_KEY
+		  AND A.T_COMP_MST_KEY = B.T_COMP_MST_KEY
+		  AND (<![CDATA[ A.CLS1 > 0 OR A.CLS2 > 0 OR A.CLS3 > 0 ]]>)
+		  GROUP BY B.UP_MST_KEY, B.T_COMP_MST_KEY, B.COMP_CORP_NUM, B.COMP_BSNS_NUM, B.COMP_NM, B.COMP_CLS
+	</select>
+	
+	<select id="FpisModUploadDAO.selectContract" parameterClass="UplContractVO" resultClass="UplContractVO">
+		SELECT 
+			B.UP_MST_KEY    ,
+			B.USR_MST_KEY   ,
+			B.T_COMP_MST_KEY,
+			B.T_CONTRACT_KEY,
+			B.USER_ID       ,
+			B.UP_SEQ		  ,
+			B.SEQ			  ,
+		    B.CONT_FORM     ,
+		    TO_CHAR(B.CONT_FROM, 'YYYY-MM-DD') AS CONT_FROM,
+		    TO_CHAR(B.CONT_TO, 'YYYY-MM-DD') AS CONT_TO,
+		    B.CONT_ITEM     ,
+		    B.GOODS_FORM    ,
+		    B.GOODS_UNIT    ,
+		    B.GOODS_CNT     ,
+		    B.START_ADDR    ,
+		    TO_CHAR(B.START_TIME, 'YYYY-MM-DD') AS START_TIME,
+		    B.END_ADDR      ,
+		    TO_CHAR(B.END_TIME, 'YYYY-MM-DD') AS END_TIME,
+		    B.CHARGE        ,
+		    B.COMMISSION    ,
+		    B.ERR_CODE	  ,
+			B.XLS_RNUM	
+		  FROM ( 
+				SELECT UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,
+				       MAX(CLS1) AS CLS1,
+				       MAX(CLS2) AS CLS2,
+				       MAX(CLS3) AS CLS3
+				  FROM 
+				  (
+						SELECT UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,
+						       DECODE(CLS,'1',ERR_CNT, 0) AS CLS1,
+						       DECODE(CLS,'2',ERR_CNT, 0) AS CLS2,
+						       DECODE(CLS,'3',ERR_CNT, 0) AS CLS3
+						  FROM (
+									select '1' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY,1 AS ERR_CNT
+									  from UPL_CONTRACT
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND T_COMP_MST_KEY = #t_comp_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+									UNION ALL
+									SELECT '2' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY, COUNT(*) AS ERR_CNT
+										FROM UPL_OPERATE
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND T_COMP_MST_KEY = #t_comp_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+									UNION ALL	
+									SELECT '3' AS CLS, UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY, COUNT(*) AS ERR_CNT
+									  FROM UPL_TRUST
+									 WHERE UP_MST_KEY = #up_mst_key#
+									   AND T_COMP_MST_KEY = #t_comp_mst_key#
+									   AND <![CDATA[ ERR_CODE < 0 ]]>
+									GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+						  	   )
+				  )
+				GROUP BY UP_MST_KEY, T_COMP_MST_KEY, T_CONTRACT_KEY
+		       ) A,
+		       UPL_CONTRACT B
+		WHERE A.UP_MST_KEY = #up_mst_key# 
+		  AND A.T_COMP_MST_KEY = #t_comp_mst_key#
+		  AND A.UP_MST_KEY = B.UP_MST_KEY
+		  AND A.T_COMP_MST_KEY = B.T_COMP_MST_KEY
+		  AND A.T_CONTRACT_KEY = B.T_CONTRACT_KEY
+		  AND (<![CDATA[ A.CLS1 > 0 OR A.CLS2 > 0 OR A.CLS3 > 0 ]]>)
+	</select>
+	
+	<select id="FpisModUploadDAO.selectOperate" parameterClass="UplOperateVO" resultClass="UplOperateVO">
+		SELECT 
+			UP_MST_KEY    ,
+			USR_MST_KEY   ,
+			T_COMP_MST_KEY,
+			T_CONTRACT_KEY,
+			USER_ID       ,
+			UP_SEQ			,
+			SEQ				,
+			COMP_CORP_NUM ,
+		    COMP_BSNS_NUM ,
+		    COMP_NM       ,
+		    OPER_CLS      ,
+		    CARS_VIM      ,
+		    CARS_REG_NUM  ,
+		    CARS_CLS      ,
+		    CARS_KIND     ,
+		    CARS_SIZE     ,
+		    DRV_NM        ,
+		    DRV_PHONE	  ,
+		    START_ADDR   ,
+		    TO_CHAR(START_TIME, 'YYYY-MM-DD') AS START_TIME,
+		    END_ADDR      ,
+		    TO_CHAR(END_TIME, 'YYYY-MM-DD') AS END_TIME,
+		    GOODS_CNT	 ,
+		    CHARGE       ,
+		    COMMISSION   ,
+		    ERR_CODE	 ,
+		    XLS_RNUM	
+		FROM UPL_OPERATE
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+		AND   T_CONTRACT_KEY = #t_contract_key#
+		AND   <![CDATA[ ERR_CODE < 0 ]]>
+	</select>
+	
+	<select id="FpisModUploadDAO.selectTrust" parameterClass="UplTrustVO" resultClass="UplTrustVO">
+		SELECT
+			UP_MST_KEY    ,
+			USR_MST_KEY   ,
+			T_COMP_MST_KEY,
+			T_CONTRACT_KEY,
+			USER_ID       ,
+			UP_SEQ		  ,
+			SEQ			  ,
+			COMP_CORP_NUM ,
+		    COMP_BSNS_NUM ,
+		    COMP_NM       ,
+		    CONT_FORM    ,
+		    TO_CHAR(CONT_FROM, 'YYYY-MM-DD') AS CONT_FROM,
+		    TO_CHAR(CONT_TO, 'YYYY-MM-DD') AS CONT_TO,
+		    CONT_ITEM    ,
+		    GOODS_FORM   ,
+		    GOODS_UNIT   ,
+		    GOODS_CNT    ,
+		    START_ADDR   ,
+		    TO_CHAR(START_TIME, 'YYYY-MM-DD') AS START_TIME,
+		    END_ADDR      ,
+		    TO_CHAR(END_TIME, 'YYYY-MM-DD') AS END_TIME,
+		    CHARGE       ,
+		    COMMISSION   ,
+		    ERR_CODE	 ,
+		    XLS_RNUM	 
+		FROM UPL_TRUST
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+		AND   T_CONTRACT_KEY = #t_contract_key#
+		AND   <![CDATA[ ERR_CODE < 0 ]]>
+	</select>
+	
+	
+	UPDATE
+	<update id="FpisModUploadDAO.updateClient" parameterClass="UplClientVO">
+		UPDATE UPL_CLIENT
+			COMP_CORP_NUM = #comp_corp_num# ,
+		    COMP_BSNS_NUM = #comp_bsns_num# ,
+		    COMP_NM  = #comp_nm# 
+		SET
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateContract" parameterClass="UplContractVO">
+		UPDATE UPL_CONTRACT
+		SET 
+		    CONT_FROM = TO_DATE(#cont_from#, 'YYYY-MM-DD'),
+		    CONT_TO = TO_DATE(#cont_to#, 'YYYY-MM-DD'),
+		    CONT_ITEM = #cont_item#     ,
+		    GOODS_FORM = #goods_form#    ,
+		    GOODS_UNIT = #goods_unit#    ,
+		    GOODS_CNT = #goods_cnt#     ,
+		    START_ADDR = #start_addr#    ,
+		    START_TIME = TO_DATE(#start_time#, 'YYYY-MM-DD'),
+		    END_ADDR = #end_addr#     ,
+		    END_TIME = TO_DATE(#end_time#, 'YYYY-MM-DD'),
+		    CHARGE = #charge#       ,
+		    ERR_CODE = #err_code#	 
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+		AND   T_CONTRACT_KEY = #t_contract_key#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateOperate" parameterClass="UplOperateVO">
+		UPDATE UPL_OPERATE
+		SET
+			COMP_CORP_NUM = #comp_corp_num# ,
+		    COMP_BSNS_NUM = #comp_bsns_num# ,
+		    COMP_NM  = #comp_nm#     ,
+		    OPER_CLS = #oper_cls#     ,
+		    CARS_VIM = #cars_vim#     ,
+		    CARS_REG_NUM = #cars_reg_num#  ,
+		    CARS_CLS  = #cars_cls#    ,
+		    CARS_KIND = #cars_kind#    ,
+		    CARS_SIZE = #cars_size#    ,
+		    DRV_NM = #drv_nm#       ,
+		    DRV_PHONE = #drv_phone#	  ,
+		    START_ADDR = #start_addr#    ,
+		    START_TIME = TO_DATE(#start_time#, 'YYYY-MM-DD'),
+		    END_ADDR = #end_addr#     ,
+		    END_TIME = TO_DATE(#end_time#, 'YYYY-MM-DD'),
+		    GOODS_CNT = #goods_cnt#	 ,
+		    CHARGE = #charge#      ,
+		    COMMISSION = #commission#  ,
+		    ERR_CODE = #err_code#
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+		AND   T_CONTRACT_KEY = #t_contract_key#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateTrust" parameterClass="UplTrustVO">
+		UPDATE UPL_TRUST
+		SET
+			COMP_CORP_NUM = #comp_corp_num# ,
+		    COMP_BSNS_NUM = #comp_bsns_num# ,
+		    COMP_NM  = #comp_nm#     ,
+		    CONT_FROM = TO_DATE(#cont_from#, 'YYYY-MM-DD'),
+		    CONT_TO = TO_DATE(#cont_to#, 'YYYY-MM-DD'),
+		    START_ADDR = #start_addr#  ,
+		    END_ADDR = #end_addr#     ,
+		    GOODS_CNT = #goods_cnt#	 ,
+		    CHARGE = #charge#      ,
+		    COMMISSION = #commission#  ,
+		    ERR_CODE = #err_code#	 		
+		WHERE UP_MST_KEY = #up_mst_key#
+		AND   T_COMP_MST_KEY = #t_comp_mst_key#
+		AND   T_CONTRACT_KEY = #t_contract_key#
+		
+	</update>
+	
+	<select id="FpisModUploadDAO.selectFileUpMstKey" parameterClass="String" resultClass="String">
+		SELECT *
+		FROM (
+			SELECT *
+			FROM UPL_MAST
+			WHERE USR_MST_KEY = #usr_mst_key#
+			AND   DEL_FLAG = 'N'
+			ORDER BY REG_DATE DESC
+		)
+		WHERE ROWNUM = 1
+	</select>
+	
+	<select id="FpisModUploadDAO.selectTotalErrorCount" parameterClass="String" resultClass="Integer">
+		SELECT SUM(CNT)
+		FROM
+		(
+			SELECT COUNT(*) AS CNT FROM UPL_CONTRACT
+			<![CDATA[ 
+			WHERE ERR_CODE < 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_TRUST
+			<![CDATA[ 
+			WHERE ERR_CODE < 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_OPERATE
+			<![CDATA[ 
+			WHERE ERR_CODE < 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_CLIENT
+			<![CDATA[ 
+			WHERE ERR_CODE < 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+		)	
+	</select>
+	<select id="FpisModUploadDAO.selectTotalSuccessCount" parameterClass="String" resultClass="Integer">
+		SELECT SUM(CNT)
+		FROM
+		(
+			SELECT COUNT(*) AS CNT FROM UPL_CONTRACT
+			<![CDATA[ 
+			WHERE ERR_CODE >= 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_TRUST
+			<![CDATA[ 
+			WHERE ERR_CODE >= 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_OPERATE
+			<![CDATA[ 
+			WHERE ERR_CODE >= 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+			UNION ALL
+			SELECT COUNT(*) AS CNT FROM UPL_CLIENT
+			<![CDATA[ 
+			WHERE ERR_CODE >= 0
+			]]> 
+			AND UP_MST_KEY = #up_mst_key#
+		)
+	</select>
+	
+	<update id="FpisModUploadDAO.updateUploadSuccess" parameterClass="String">
+		UPDATE UPL_MAST
+		SET
+			DEF_RES_SUC = (DEF_RES_SUC + 1),
+			DEF_RES_ERR = (DEF_RES_ERR - 1)
+		WHERE
+			UP_MST_KEY = #up_mst_key#
+	</update>
+	
+실적 일괄 등록 Query
+	<insert id="FpisModUploadDAO.insertRegMast" parameterClass="java.util.HashMap">
+		INSERT INTO REG_MAST
+		(
+			ROOT_ID    , 
+			REG_ID     ,
+			TRUST_ID   ,
+			USR_MST_KEY,
+			REG_FIX    ,
+			ASSIGN_FIX ,
+			TRUST_FIX  ,
+			REG_DATE   ,
+			REG_USER   ,
+			PG_ID
+		)
+		(
+			SELECT 
+				REG_ID AS ROOT_ID,
+				DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID,
+				'' AS TRUST_ID,
+				USR_MST_KEY AS USR_MST_KEY,
+				'Y' AS REG_FIX    ,
+				'Y' AS ASSIGN_FIX ,
+				'Y' AS TRUST_FIX  ,
+				SYSDATE AS REG_DATE,
+				#user_id# AS REG_USER,
+				'MODULE' AS PG_ID
+			FROM UPL_CONTRACT
+			WHERE UP_MST_KEY = #up_mst_key#
+		)	
+	</insert>
+	<insert id="FpisModUploadDAO.insertRegClient" parameterClass="java.util.HashMap">
+		INSERT INTO REG_CLIENT
+		(
+			REG_ID,
+			USR_MST_KEY,
+			COMP_MST_KEY,
+			REG_TYPE,
+			CLI_CLS,
+			COMP_CORP_NUM,
+			COMP_BSNS_NUM,
+			COMP_NM,
+			REG_DATE,
+			REG_USER,
+			PG_ID
+		)
+		(
+			SELECT 
+				DECODE(b.TRUST_ID, ' ', b.REG_ID, b.TRUST_ID) AS REG_ID,
+				a.USR_MST_KEY AS USR_MST_KEY,
+				a.T_COMP_MST_KEY AS COMP_MST_KEY,
+				'01' AS REG_TYPE,
+				'01' AS CLI_CLS,
+				a.COMP_CORP_NUM AS COMP_CORP_NUM,
+				a.COMP_BSNS_NUM AS COMP_BSNS_NUM,
+				a.COMP_NM AS COMP_NM,
+				SYSDATE AS REG_DATE,
+				#user_id# AS REG_USER,
+				'MODULE' AS PG_ID
+			FROM UPL_CLIENT a, UPL_CONTRACT b
+			WHERE a.UP_MST_KEY = b.UP_MST_KEY
+			AND   a.USR_MST_KEY = b.USR_MST_KEY
+			AND   a.T_COMP_MST_KEY = b.T_COMP_MST_KEY
+			AND   a.UP_MST_KEY = #up_mst_key#
+		)
+	</insert>
+	<insert id="FpisModUploadDAO.insertRegContract" parameterClass="java.util.HashMap">
+		INSERT INTO REG_CONTRACT
+		(
+			USR_MST_KEY,
+			REG_ID,
+			CONT_FORM,
+			CONT_FROM,
+			CONT_TO,
+			CONT_ITEM,
+			GOODS_FORM,
+			GOODS_UNIT,
+			GOODS_CNT,
+			START_ADDR1,
+			START_TIME,
+			END_ADDR1,
+			END_TIME,
+			CHARGE,
+			REG_DATE,
+			REG_USER,
+			PG_ID
+		)
+		(
+			SELECT 
+				USR_MST_KEY AS USR_MST_KEY,
+				DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID,
+				CONT_FORM,
+				TO_DATE(CONT_FROM, 'YYYY-MM-DD') AS CONT_FROM,
+				TO_DATE(CONT_TO, 'YYYY-MM-DD') AS CONT_TO,
+				CONT_ITEM,
+				GOODS_FORM,
+				GOODS_UNIT,
+				GOODS_CNT,
+				START_ADDR AS START_ADDR1,
+				TO_DATE(START_TIME, 'YYYY-MM-DD') AS START_TIME,
+				END_ADDR AS END_ADDR1,
+				TO_DATE(END_TIME, 'YYYY-MM-DD') AS END_TIME,
+				CHARGE,
+				SYSDATE AS REG_DATE,
+				#user_id# AS REG_USER,
+				'MODULE' AS PG_ID
+			FROM UPL_CONTRACT
+			WHERE UP_MST_KEY = #up_mst_key#
+		)
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertRegOperate" parameterClass="java.util.HashMap">
+		INSERT INTO REG_OPERATE
+		(
+			USR_MST_KEY,
+			REG_ID,
+			CARS_MST_KEY,
+			GOODS_CNT,
+			START_ADDR1,
+			START_TIME,
+			END_ADDR1,
+			END_TIME,
+			CHARGE,
+			COMMISSION,
+			REG_DATE,
+			REG_USER,
+			PG_ID
+		)
+		(
+			SELECT 
+				a.USR_MST_KEY AS USR_MST_KEY,
+				DECODE(a.TRUST_ID, ' ', a.REG_ID, a.TRUST_ID) AS REG_ID,
+				c.CARS_MST_KEY,
+				b.GOODS_CNT,
+				b.START_ADDR AS START_ADDR1,
+				TO_DATE(b.START_TIME, 'YYYY-MM-DD') AS START_TIME,
+				b.END_ADDR AS END_ADDR1,
+				TO_DATE(b.END_TIME, 'YYYY-MM-DD') AS END_TIME,
+				b.CHARGE,
+				'0' AS COMMISSION,
+				SYSDATE AS REG_DATE,
+				#user_id# AS REG_USER,
+				'MODULE' AS PG_ID
+			FROM UPL_CONTRACT a, UPL_OPERATE b, USR_CARS_INFO c
+			WHERE a.UP_MST_KEY = b.UP_MST_KEY
+			AND   a.USR_MST_KEY = b.USR_MST_KEY
+			AND   a.T_CONTRACT_KEY = b.T_CONTRACT_KEY
+			AND   a.USR_MST_KEY = c.USR_MST_KEY
+			AND   b.CARS_REG_NUM = c.CARS_REG_NUM
+			AND   a.UP_MST_KEY = #up_mst_key#
+		)	
+	</insert>
+	<insert id="FpisModUploadDAO.insertRegTrustCont" parameterClass="java.util.HashMap">
+		INSERT INTO REG_TRUST_CONT
+		(
+			USR_MST_KEY,
+			ROOT_ID,
+			REG_ID,
+			TRUST_ID,
+			COMP_MST_KEY,
+			CONT_FORM,
+			CONT_FROM,
+			CONT_TO,
+			CONT_ITEM,
+			GOODS_FORM,
+			GOODS_UNIT,
+			GOODS_CNT,
+			START_ADDR1,
+			END_ADDR1,
+			CHARGE,
+			COMMISSION,
+			TRUST_CLS,
+			REG_DATE,
+			REG_USER,
+			PG_ID
+		)
+		(
+			SELECT 
+				a.USR_MST_KEY AS USR_MST_KEY,
+				a.REG_ID AS ROOT_ID,
+				a.REG_ID AS REG_ID,
+				b.T_TRUST_ID,
+				b.T_COMP_MST_KEY AS COMP_MST_KEY,
+				a.CONT_FORM,
+				TO_DATE(b.CONT_FROM, 'YYYY-MM-DD') AS CONT_FROM,
+				TO_DATE(b.CONT_TO, 'YYYY-MM-DD') AS CONT_TO,
+				a.CONT_ITEM,
+				a.GOODS_FORM,
+				a.GOODS_UNIT,
+				b.GOODS_CNT,
+				b.START_ADDR AS START_ADDR1,
+				b.END_ADDR AS END_ADDR1,
+				b.CHARGE,
+				b.COMMISSION,
+				'01' AS TRUST_CLS,
+				SYSDATE AS REG_DATE,
+				#user_id# AS REG_USER,
+				'MODULE' AS PG_ID
+			FROM UPL_CONTRACT a, UPL_TRUST b
+			WHERE a.UP_MST_KEY = b.UP_MST_KEY
+			AND   a.T_CONTRACT_KEY =  b.T_CONTRACT_KEY
+			AND   a.UP_MST_KEY = #up_mst_key#
+		)
+	</insert>
+	
+	<update id="FpisModUploadDAO.updateUploadStatusDone" parameterClass="String">
+		UPDATE UPL_MAST
+		SET
+			RUN_STAT = '00'
+		WHERE UP_MST_KEY = #up_mst_key#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateDelFlag" parameterClass="String">
+		UPDATE UPL_MAST
+		SET 
+			DEL_FLAG = 'Y'
+		WHERE UP_MST_KEY = #up_mst_key#
+	</update>
+	관리자 플레그 처리
+	<update id="FpisModUploadDAO.updateRegDelFlag"  parameterClass="java.util.HashMap">
+		UPDATE UPL_MAST
+		SET 
+			REG_DEL_FLAG = #flag#,
+			REG_DEL_USER = #user_id#
+		WHERE UP_MST_KEY = #up_mst_key#
+	</update>
+
+	<update id="FpisModUploadDAO.updateRegDelFlag2"  parameterClass="java.util.HashMap">
+		UPDATE UPL_MAST
+		SET 
+			REG_DEL_FLAG  = #flag#,
+			REG_DEL_USER  = #user_id#
+		WHERE USR_MST_KEY = #usr_mst_key#
+		  AND UP_MST_KEY  = #up_mst_key#
+	</update>
+
+	<update id="FpisModUploadDAO.updateRegDelFlagBak" parameterClass="String">
+		UPDATE UPL_MAST
+		SET 
+			REG_DEL_FLAG = 'Y'
+		WHERE UP_MST_KEY = #up_mst_key#
+	</update>	
+	관리자 삭제관리
+	<select id="FpisModUploadDAO.countMasterListByAdmin" parameterClass="FpisModUploadListSearchVO" resultClass="Integer">
+		SELECT 
+			COUNT(*)
+		FROM UPL_MAST
+		WHERE 1 = 1
+		<isNotNull property="user_id">
+			<isNotEmpty property="user_id" prepend="AND">
+			USER_ID = #user_id#
+			</isNotEmpty>
+		</isNotNull>
+   		<isNotNull property="from_date">
+   			<isNotEmpty property="from_date" prepend="AND">
+			REG_DATE BETWEEN TO_DATE(#from_date#  || ' 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+                      			AND TO_DATE(#to_date# || ' 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+   			</isNotEmpty>
+  	    </isNotNull>		
+		ORDER BY REG_DATE DESC
+	</select>	
+	<select id="FpisModUploadDAO.selectMasterListByAdmin" parameterClass="FpisModUploadListSearchVO" resultClass="UplMastVO">
+		SELECT a.*
+		FROM 
+		(
+			SELECT ROWNUM AS r_num ,
+				   a.*
+			FROM
+			(
+				SELECT 
+					*
+				FROM UPL_MAST
+				WHERE 1 = 1
+				<isNotNull property="user_id">
+					<isNotEmpty property="user_id" prepend="AND">
+					USER_ID = #user_id#
+					</isNotEmpty>
+				</isNotNull>
+		   		<isNotNull property="from_date">
+		   			<isNotEmpty property="from_date" prepend="AND">
+						REG_DATE BETWEEN TO_DATE(#from_date#  || ' 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+		                       			AND TO_DATE(#to_date# || ' 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+		   			</isNotEmpty>
+		  	    </isNotNull>		
+				
+				ORDER BY REG_DATE DESC
+			) a WHERE  ROWNUM <![CDATA[  < ]]> #e_row#
+		) a WHERE a.R_NUM   <![CDATA[ > ]]>  #s_row#
+	</select>
+	<delete id="FpisModUploadDAO.deleteREG_TRUST_CONT" parameterClass="String">
+		DELETE FROM REG_TRUST_CONT A
+		 WHERE EXISTS 
+		 (
+		 	SELECT 1
+		 	  FROM
+		 	  (
+			 	SELECT USR_MST_KEY AS USR_MST_KEY,
+					   DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID
+			 	  FROM UPL_CONTRACT
+			     WHERE UP_MST_KEY = #up_mst_key#
+		 		) B
+		 		WHERE A.USR_MST_KEY = B.USR_MST_KEY
+		 		  AND A.REG_ID = B.REG_ID
+		 )
+	</delete>	
+	<delete id="FpisModUploadDAO.deleteModREG_OPERATE" parameterClass="String">
+		DELETE FROM REG_OPERATE A
+		 WHERE EXISTS 
+		 (
+		 	SELECT 1
+		 	  FROM
+		 	  (
+			 	SELECT USR_MST_KEY AS USR_MST_KEY,
+					   DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID
+			 	  FROM UPL_CONTRACT
+			     WHERE UP_MST_KEY = #up_mst_key#
+		 		) B
+		 		WHERE A.USR_MST_KEY = B.USR_MST_KEY
+		 		  AND A.REG_ID = B.REG_ID
+		 )
+	</delete>
+	<delete id="FpisModUploadDAO.deleteModREG_CLIENT" parameterClass="String">
+		DELETE FROM REG_CLIENT A
+		 WHERE EXISTS 
+		 (
+		 	SELECT 1
+		 	  FROM
+		 	  (
+			 	SELECT USR_MST_KEY AS USR_MST_KEY,
+					   DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID
+			 	  FROM UPL_CONTRACT
+			     WHERE UP_MST_KEY = #up_mst_key#
+		 		) B
+		 		WHERE A.USR_MST_KEY = B.USR_MST_KEY
+		 		  AND A.REG_ID = B.REG_ID
+		 )
+	</delete>		
+	<delete id="FpisModUploadDAO.deleteModREG_CONTRACT" parameterClass="String">
+		DELETE FROM REG_CONTRACT A
+		 WHERE EXISTS 
+		 (
+		 	SELECT 1
+		 	  FROM
+		 	  (
+			 	SELECT USR_MST_KEY AS USR_MST_KEY,
+					   DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID
+			 	  FROM UPL_CONTRACT
+			     WHERE UP_MST_KEY = #up_mst_key#
+		 		) B
+		 		WHERE A.USR_MST_KEY = B.USR_MST_KEY
+		 		  AND A.REG_ID = B.REG_ID
+		 )
+	</delete>
+	
+		KL-NET 오류 수정 작업 
+		FpisModUploadDAO.deleteModREG_MAST 코드 누락
+		2013.07.29 GNT mgkim  
+	
+	<delete id="FpisModUploadDAO.deleteModREG_MAST" parameterClass="String">
+		DELETE FROM REG_MAST A
+		 WHERE EXISTS 
+		 (
+		 	SELECT 1
+		 	  FROM
+		 	  (
+			 	SELECT USR_MST_KEY AS USR_MST_KEY,
+					   DECODE(TRUST_ID, ' ', REG_ID, TRUST_ID) AS REG_ID
+			 	  FROM UPL_CONTRACT
+			     WHERE UP_MST_KEY = #up_mst_key#
+		 		) B
+		 		WHERE A.USR_MST_KEY = B.USR_MST_KEY
+		 		  AND A.REG_ID = B.REG_ID
+		 )
+	</delete>	
+	<delete id="FpisModUploadDAO.deleteUP_MAST" parameterClass="String">
+		DELETE FROM UPL_MAST  
+		 WHERE UP_MST_KEY = #up_mst_key#
+	</delete>
+	<delete id="FpisModUploadDAO.deleteUP_CLIENT" parameterClass="String">
+		DELETE FROM UPL_CLIENT
+		 WHERE UP_MST_KEY = #up_mst_key#
+	</delete>	
+	<delete id="FpisModUploadDAO.deleteUP_CONTRACT" parameterClass="String">
+		DELETE FROM UPL_CONTRACT
+		 WHERE UP_MST_KEY = #up_mst_key#
+	</delete>	
+	<delete id="FpisModUploadDAO.deleteUP_OPERATE" parameterClass="String">
+		DELETE FROM UPL_OPERATE
+		 WHERE UP_MST_KEY = #up_mst_key#
+	</delete>
+	<delete id="FpisModUploadDAO.deleteUP_TRUST" parameterClass="String">
+		DELETE FROM UPL_TRUST
+		 WHERE UP_MST_KEY = #up_mst_key#
+	</delete> -->
+	
+	<!-- 연계모듈 Zip 데이터 연동관련 시작 -->
+	<select id="FpisModUploadDAO.checkZipUpdateCount" parameterClass="String" resultClass="Integer">
+		select count(*) from COMTCZIP_NEWROAD
+		where to_date(FRST_REGIST_PNTTM,'yyyymmdd') > to_date(#updateDate#, 'yyyymmdd')
+	</select>
+	<resultMap class="ModZIP" id="zipListResult">
+		<result property="zip" column="ZIP"/>
+		<result property="sido" column="CTPRVN_NM"/>
+		<result property="gungu" column="SIGNGU_NM"/>
+		<result property="dong" column="EMD_NM"/>
+	</resultMap>
+	<select id="FpisModUploadDAO.getZipList" resultMap="zipListResult">
+		select 
+			ZIP,
+			CTPRVN_NM,
+			SIGNGU_NM,
+			EMD_NM 
+		from COMTCZIP_NEWROAD
+		where display_gubun = '1'
+		and sn != '999'
+	</select>
+	
+	<!-- 연계모듈 Zip 데이터 연동관련 끝 -->
+	
+	<!-- 연계모듈 일괄등록 -->
+	<select id="FpisModUploadDAO.getUUSeqNext" resultClass="Integer">
+		select MODULE_UNIQUE_SEQ.nextval UU_SEQ from dual
+	</select>
+	
+	<insert id="FpisModUploadDAO.insertRegModuleUploadHistory" parameterClass="java.util.HashMap">
+		INSERT INTO REG_MODULE_UPLOAD_HISTORY
+		(
+			FILENAME,
+			USER_ID,
+			USR_MST_KEY,
+			UNIQUE_SEQ,
+			IS_SUCCESS,
+			START_TIME
+		)
+		VALUES
+		(
+			#filename#,
+			#user_id#,
+			(SELECT sys.xdb_enc('normal',#usr_mst_key#) from dual),
+			TO_NUMBER(#uu_seq#),
+			'Y',
+			SYSDATE
+		)
+	</insert>
+	
+	<update id="FpisModUploadDAO.updateUUSeqEndTime" parameterClass="Integer">
+		UPDATE REG_MODULE_UPLOAD_HISTORY
+		SET
+			END_TIME = SYSDATE
+		WHERE 
+		UNIQUE_SEQ = #value#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegModuleUploadHistory" parameterClass="Integer">
+		UPDATE REG_MODULE_UPLOAD_HISTORY
+		SET IS_SUCCESS = 'N'
+		WHERE UNIQUE_SEQ = #uuSeq#
+	</update>
+	
+	<delete id="FpisModUploadDAO.deleteRegClient" parameterClass="Integer">
+		DELETE FROM REG_CLIENT
+		WHERE UU_SEQ = #uuSeq#
+	</delete>
+	
+	<delete id="FpisModUploadDAO.deleteRegContract" parameterClass="Integer">
+		DELETE FROM REG_CONTRACT
+		WHERE UU_SEQ = #uuSeq#
+	</delete>
+	
+	<delete id="FpisModUploadDAO.deleteRegOperate" parameterClass="Integer">
+		DELETE FROM REG_OPERATE
+		WHERE UU_SEQ = #uuSeq#
+	</delete>
+	
+	<delete id="FpisModUploadDAO.deleteRegTrust" parameterClass="Integer">
+		DELETE FROM REG_TRUST_CONT
+		WHERE UU_SEQ = #uuSeq#
+	</delete>
+		
+	<update id="FpisModUploadDAO.updateRegClient" parameterClass="Integer">
+		UPDATE REG_CLIENT
+		SET 
+			USR_MST_KEY 	=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			TEL				=	(select sys.xdb_enc('normal',TEL) from dual),
+			ADDR1			=	(select sys.xdb_enc('normal',ADDR1) from dual),
+			ADDR2			=	(select sys.xdb_enc('normal',ADDR2) from dual),
+			COMP_BSNS_NUM	=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual),
+			COMP_CORP_NUM	=	(select sys.xdb_enc('normal',COMP_CORP_NUM) from dual),
+			COMP_MST_KEY	=	(select sys.xdb_enc('normal',COMP_MST_KEY) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegContract" parameterClass="Integer">
+		UPDATE REG_CONTRACT
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			AGENCY_USR_MST_KEY	=	(select sys.xdb_enc('normal',AGENCY_USR_MST_KEY) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegOperate" parameterClass="Integer">
+		UPDATE REG_OPERATE
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			CARS_REG_NUM 		=	(select sys.xdb_enc('normal',CARS_REG_NUM) from dual),
+			DRV_TEL				=	(select sys.xdb_enc('normal',DRV_TEL) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegTrust" parameterClass="Integer">
+		UPDATE REG_TRUST_CONT
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			COMP_MST_KEY 		=	(select sys.xdb_enc('normal',COMP_MST_KEY) from dual),
+			ADDR1	 			=	(select sys.xdb_enc('normal',ADDR1) from dual),
+			ADDR2 				=	(select sys.xdb_enc('normal',ADDR2) from dual),
+			TEL			 		=	(select sys.xdb_enc('normal',TEL) from dual),
+			COMP_BSNS_NUM 		=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual),
+			COMP_CORP_NUM		=	(select sys.xdb_enc('normal',COMP_CORP_NUM) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+		
+	<update id="FpisModUploadDAO.updateRegContractTB" parameterClass="java.util.HashMap">
+		UPDATE $tName$
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegOperateTB" parameterClass="java.util.HashMap">
+		UPDATE $tName$
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			CARS_REG_NUM 		=	(select sys.xdb_enc('normal',CARS_REG_NUM) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegTrustTB" parameterClass="java.util.HashMap">
+		UPDATE $tName$
+		SET 
+			USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			COMP_MST_KEY 		=	(select sys.xdb_enc('normal',COMP_MST_KEY) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>	
+	<!-- 연계모듈 일괄등록 끝 -->
+	
+	<!-- 간소화 양식에 해당하는 컬럼 업데이트 -->
+	<update id="FpisModUploadDAO.updateRegClientForSmalling" parameterClass="java.util.HashMap">
+		<!-- DECLARE
+			TB_CNT NUMBER(1,0);
+		begin
+			select count(*) INTO TB_CNT from user_objects where object_name = #tName#;
+			CASE TB_CNT
+			WHEN 1 THEN
+				UPDATE $tName$
+				SET 
+					USR_MST_KEY 	=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					COMP_BSNS_NUM	=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+			end CASE;
+		end; -->
+		UPDATE $tName$
+		SET 
+			USR_MST_KEY 	=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+			COMP_BSNS_NUM	=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual)
+		WHERE
+			UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegContractForSmalling" parameterClass="java.util.HashMap">
+		<!-- DECLARE
+			TB_CNT NUMBER(1,0);
+		begin
+			select count(*) INTO TB_CNT from user_objects where object_name = #tName#;
+			CASE TB_CNT
+			WHEN 1 THEN
+				UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					AGENCY_USR_MST_KEY	=	(select sys.xdb_enc('normal',AGENCY_USR_MST_KEY) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+			end CASE;
+		end; -->
+		UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					AGENCY_USR_MST_KEY	=	(select sys.xdb_enc('normal',AGENCY_USR_MST_KEY) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegOperateForSmalling" parameterClass="java.util.HashMap">
+		<!-- DECLARE
+			TB_CNT NUMBER(1,0);
+		begin
+			select count(*) INTO TB_CNT from user_objects where object_name = #tName#;
+			CASE TB_CNT
+			WHEN 1 THEN
+				UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					CARS_REG_NUM 		=	(select sys.xdb_enc('normal',CARS_REG_NUM) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+			end CASE;
+		end; -->
+		UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					CARS_REG_NUM 		=	(select sys.xdb_enc('normal',CARS_REG_NUM) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+	</update>
+	
+	<update id="FpisModUploadDAO.updateRegTrustForSmalling" parameterClass="java.util.HashMap">
+		<!-- DECLARE
+			TB_CNT NUMBER(1,0);
+		begin
+			select count(*) INTO TB_CNT from user_objects where object_name = #tName#;
+			CASE TB_CNT
+			WHEN 1 THEN
+				UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					COMP_MST_KEY 		=	(select sys.xdb_enc('normal',COMP_MST_KEY) from dual),
+					COMP_BSNS_NUM 		=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+			end CASE;
+		end; -->
+		UPDATE $tName$
+				SET 
+					USR_MST_KEY 		=	(select sys.xdb_enc('normal',USR_MST_KEY) from dual),
+					COMP_MST_KEY 		=	(select sys.xdb_enc('normal',COMP_MST_KEY) from dual),
+					COMP_BSNS_NUM 		=	(select sys.xdb_enc('normal',COMP_BSNS_NUM) from dual)
+				WHERE
+					UU_SEQ = #uuSeq#
+	</update>
+	
+	
+	<!-- 간소화 -->
+	<statement id="FpisModUploadDAO.createTempTableForClientForSmalling" parameterClass="String">
+		CREATE TABLE $value$
+		(
+			REG_ID VARCHAR(40),
+			USR_MST_KEY VARCHAR(24),
+			COMP_MST_KEY VARCHAR(48),
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20),
+			UPD_USER VARCHAR(20),
+			PG_ID VARCHAR(200),
+			COMP_CORP_NUM VARCHAR(24),
+			COMP_BSNS_NUM VARCHAR(48),
+			COMP_NM VARCHAR(50),
+			CEO VARCHAR(50),
+			TEL VARCHAR(48),
+			ZIP VARCHAR(10),
+			ADDR1 VARCHAR(280),
+			ADDR2 VARCHAR(88),
+			REG_TYPE VARCHAR(2) DEFAULT '01',
+			CLI_CLS VARCHAR(2) DEFAULT '01',
+			UU_SEQ NUMBER(22),
+			CONTRACT_GUBUN VARCHAR(100)
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createTempTableForContractForSmalling" parameterClass="String">
+		CREATE TABLE $value$
+		(
+			USR_MST_KEY VARCHAR(24),
+			REG_ID VARCHAR(40),
+			CONT_FORM VARCHAR(2),
+			CONT_FROM DATE,
+			CONT_TO DATE,
+			CONT_ITEM VARCHAR(2),
+			GOODS_FORM VARCHAR(2),
+			GOODS_UNIT VARCHAR(2),
+			GOODS_CNT VARCHAR(20),
+			START_ZIP VARCHAR(7),
+			START_ADDR1 VARCHAR(200),
+			START_ADDR2 VARCHAR(200),
+			START_TIME DATE,
+			END_ZIP VARCHAR(7),
+			END_ADDR1 VARCHAR(200),
+			END_ADDR2 VARCHAR(200),
+			END_TIME DATE,
+			TRANS_OK VARCHAR(2),
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20),
+			UPD_USER VARCHAR(20),
+			PG_ID VARCHAR(200),
+			MANG_TYPE VARCHAR(2) DEFAULT '0',
+			AGENCY_USR_MST_KEY VARCHAR(24),
+			AGENCY_YN VARCHAR(2) DEFAULT 'N',
+			CONT_M_KEY VARCHAR(100),
+			MODIFY_REQUEST VARCHAR(2) DEFAULT '0',
+			NOPERMIT_REQUEST VARCHAR(2) DEFAULT '0',
+			REQUEST_DATE DATE,
+			COMFIRM_YN VARCHAR(2) DEFAULT 'N',
+			PERMIT_DATE DATE,
+			MATCH_YN VARCHAR(2) DEFAULT 'N',
+			UU_SEQ NUMBER(22),
+			CONTRACT_GUBUN VARCHAR(100),
+			CHARGE VARCHAR(30) DEFAULT '0',
+			COMMISSION VARCHAR(30),
+			DEL_TYPE VARCHAR(2) DEFAULT '01',
+			TRANS_TYPE VARCHAR(2) DEFAULT '01',
+			COMFIRM_DATE DATE
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createTempTableForOperateForSmalling" parameterClass="String">
+		CREATE TABLE $value$
+		(
+			USR_MST_KEY VARCHAR(24),
+			REG_ID VARCHAR(40),
+			CARS_MST_KEY VARCHAR(30),
+			GOODS_CNT VARCHAR(20),
+			START_ZIP VARCHAR(7),
+			START_ADDR1 VARCHAR(200),
+			START_ADDR2 VARCHAR(200),
+			START_TIME DATE,
+			START_LAT NUMBER(22),
+			START_LON NUMBER(22),
+			END_ZIP VARCHAR(7),
+			END_ADDR1 VARCHAR(200),
+			END_ADDR2 VARCHAR(200),
+			END_TIME DATE,
+			END_LAT NUMBER(22),
+			END_LON NUMBER(22),
+			TRANS_OK VARCHAR(2),
+			REMARK VARCHAR(500),
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20),
+			UPD_USER VARCHAR(20),
+			PG_ID VARCHAR(200),
+			SEQ NUMBER(22),
+			GOODS_UNIT VARCHAR(2),
+			DRV_NM VARCHAR(80),
+			CARS_REG_NUM VARCHAR(24),
+			DRV_TEL VARCHAR(48),
+			UPDATE_SEQ NUMBER(22),
+			UU_SEQ NUMBER(22),
+			SUTAK_YN VARCHAR(2) DEFAULT 'N',
+			CONTRACT_GUBUN VARCHAR(100),
+			CHARGE VARCHAR(30) DEFAULT '0',
+			COMMISSION VARCHAR(30)
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createTempTableForTrustForSmalling" parameterClass="String">
+		CREATE TABLE $value$
+		(
+			USR_MST_KEY VARCHAR(24),
+			ROOT_ID VARCHAR(40),
+			REG_ID VARCHAR(40),
+			TRUST_ID VARCHAR(40),
+			COMP_MST_KEY VARCHAR(24),
+			CONT_FORM VARCHAR(2),
+			CONT_FROM DATE,
+			CONT_TO DATE,
+			CONT_ITEM VARCHAR(2),
+			GOODS_FORM VARCHAR(2),
+			GOODS_UNIT VARCHAR(2),
+			GOODS_CNT VARCHAR(20),
+			TRUST_LEV NUMBER(22),
+			TRUST_CLS VARCHAR(2) DEFAULT '01',
+			START_ZIP VARCHAR(7),
+			START_ADDR1 VARCHAR(200),
+			START_ADDR2 VARCHAR(200),
+			END_ZIP VARCHAR(7),
+			END_ADDR1 VARCHAR(200),
+			END_ADDR2 VARCHAR(200),
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20),
+			UPD_USER VARCHAR(20),
+			PG_ID VARCHAR(200),
+			MANG_TYPE VARCHAR(2) DEFAULT '0',
+			TRANS_TYPE VARCHAR(2),
+			COMP_NM VARCHAR(50),
+			CEO VARCHAR(50),
+			ADDR1 VARCHAR(280),
+			ADDR2 VARCHAR(88),
+			TEL VARCHAR(48),
+			COMP_BSNS_NUM VARCHAR(24),
+			COMP_CORP_NUM VARCHAR(24),
+			TRUST_M_KEY VARCHAR(100),
+			UU_SEQ NUMBER(22),
+			CONTRACT_GUBUN VARCHAR(100),
+			CHARGE VARCHAR(30) DEFAULT '0',
+			COMMISSION VARCHAR(30),
+			SUTAK_YN VARCHAR(2) DEFAULT 'N',
+			END_DATE DATE
+		)
+	</statement>
+	
+	<insert id="FpisModUploadDAO.insertClientFromTempForSmalling" parameterClass="java.util.HashMap">
+		INSERT INTO REG_CLIENT
+		SELECT 
+			REG_ID,
+			USR_MST_KEY,
+			COMP_MST_KEY,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			COMP_CORP_NUM,
+			COMP_BSNS_NUM,
+			COMP_NM,
+			CEO,
+			TEL,
+			ZIP,
+			ADDR1,
+			ADDR2,
+			REG_TYPE,
+			CLI_CLS,
+			UU_SEQ,
+			CONTRACT_GUBUN
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertContractFromTempForSmalling" parameterClass="java.util.HashMap">
+		INSERT INTO REG_CONTRACT
+		SELECT 
+			USR_MST_KEY,
+			REG_ID,
+			CONT_FORM,
+			CONT_FROM,
+			CONT_TO,
+			CONT_ITEM,
+			GOODS_FORM,
+			GOODS_UNIT,
+			GOODS_CNT,
+			START_ZIP,
+			START_ADDR1,
+			START_ADDR2,
+			START_TIME,
+			END_ZIP,
+			END_ADDR1,
+			END_ADDR2,
+			END_TIME,
+			TRANS_OK,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			MANG_TYPE,
+			AGENCY_USR_MST_KEY,
+			AGENCY_YN,
+			CONT_M_KEY,
+			MODIFY_REQUEST,
+			NOPERMIT_REQUEST,
+			REQUEST_DATE,
+			'N' as COMFIRM_YN,
+			PERMIT_DATE,
+			MATCH_YN,
+			UU_SEQ,
+			CONTRACT_GUBUN,
+			CHARGE,
+			COMMISSION,
+			DEL_TYPE,
+			TRANS_TYPE,
+			COMFIRM_DATE
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertOperateFromTempForSmalling" parameterClass="java.util.HashMap">
+		INSERT INTO REG_OPERATE
+		SELECT 
+			USR_MST_KEY,
+			REG_ID,
+			CARS_MST_KEY,
+			GOODS_CNT,
+			START_ZIP,
+			START_ADDR1,
+			START_ADDR2,
+			START_TIME,
+			START_LAT,
+			START_LON,
+			END_ZIP,
+			END_ADDR1,
+			END_ADDR2,
+			END_TIME,
+			END_LAT,
+			END_LON,
+			TRANS_OK,
+			REMARK,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			SEQ,
+			GOODS_UNIT,
+			DRV_NM,
+			CARS_REG_NUM,
+			DRV_TEL,
+			UPDATE_SEQ,
+			UU_SEQ,
+			SUTAK_YN,
+			CONTRACT_GUBUN,
+			CHARGE,
+			COMMISSION
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertTrustFromTempForSmalling" parameterClass="java.util.HashMap">
+		INSERT INTO REG_TRUST_CONT
+		SELECT 
+			USR_MST_KEY,
+			ROOT_ID,
+			REG_ID,
+			TRUST_ID,
+			COMP_MST_KEY,
+			CONT_FORM,
+			CONT_FROM,
+			CONT_TO,
+			CONT_ITEM,
+			GOODS_FORM,
+			GOODS_UNIT,
+			GOODS_CNT,
+			TRUST_LEV,
+			TRUST_CLS,
+			START_ZIP,
+			START_ADDR1,
+			START_ADDR2,
+			END_ZIP,
+			END_ADDR1,
+			END_ADDR2,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			MANG_TYPE,
+			TRANS_TYPE,
+			COMP_NM,
+			CEO,
+			ADDR1,
+			ADDR2,
+			TEL,
+			COMP_BSNS_NUM,
+			COMP_CORP_NUM,
+			TRUST_M_KEY,
+			UU_SEQ,
+			CONTRACT_GUBUN,
+			CHARGE,
+			COMMISSION,
+			SUTAK_YN,
+			END_DATE
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<!-- 택배 -->
+	<statement id="FpisModUploadDAO.createTempTableForContract" parameterClass="String">
+		CREATE TABLE $value$ (
+			USR_MST_KEY VARCHAR(24 BYTE) NOT NULL,
+			REG_ID VARCHAR(40 BYTE) NOT NULL,
+			CONT_FROM DATE,
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20 BYTE),
+			UPD_USER VARCHAR(20 BYTE),
+			PG_ID VARCHAR(200 BYTE),
+			MODIFY_REQUEST VARCHAR(2 BYTE) DEFAULT '0',
+			NOPERMIT_REQUEST VARCHAR(2 BYTE) DEFAULT '0',
+			REQUEST_DATE DATE,
+			COMFIRM_YN VARCHAR(2 BYTE) DEFAULT 'N',
+			PERMIT_DATE DATE,
+			UU_SEQ NUMBER,
+			CONTRACT_GUBUN VARCHAR(100 BYTE),
+			CHARGE VARCHAR(30 BYTE) DEFAULT '0' NOT NULL
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createIndexForTempTable" parameterClass="java.util.HashMap">
+		CREATE INDEX $indexName$ ON $tName$ (UU_SEQ);
+	</statement>
+	
+	<statement id="FpisModUploadDAO.dropIndexForTempTable" parameterClass="String">
+		DROP INDEX $value$;
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createTempTableForOperate" parameterClass="String">
+		CREATE TABLE $value$ (
+			USR_MST_KEY VARCHAR(24 BYTE),
+			REG_ID VARCHAR(40 BYTE),
+			TRUST_ID VARCHAR(40 BYTE),
+			CARS_MST_KEY VARCHAR(30 BYTE),
+			END_TIME DATE,
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20 BYTE),
+			UPD_USER VARCHAR(20 BYTE),
+			PG_ID VARCHAR(200 BYTE),
+			SEQ NUMBER(12) DEFAULT 1,
+			CARS_REG_NUM VARCHAR(24 BYTE),
+			UPDATE_SEQ NUMBER,
+			UU_SEQ NUMBER,
+			CHARGE VARCHAR(30 BYTE) DEFAULT '0' NOT NULL
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.createTempTableForTrust" parameterClass="String">
+		CREATE TABLE $value$ (
+			USR_MST_KEY VARCHAR(24 BYTE) NOT NULL,
+			REG_ID VARCHAR(40 BYTE) NOT NULL,
+			TRUST_ID VARCHAR(40 BYTE) NOT NULL,
+			COMP_MST_KEY VARCHAR(24 BYTE),
+			CONT_FROM DATE,
+			REG_DATE DATE,
+			UPD_DATE DATE,
+			REG_USER VARCHAR(20 BYTE),
+			UPD_USER VARCHAR(20 BYTE),
+			PG_ID VARCHAR(200 BYTE),
+			UU_SEQ NUMBER,
+			CONTRACT_GUBUN VARCHAR(100 BYTE),
+			CHARGE VARCHAR(30 BYTE) DEFAULT '0',
+			SUTAK_YN VARCHAR(2 BYTE) DEFAULT 'N'
+		)
+	</statement>
+	
+	<statement id="FpisModUploadDAO.dropTempTableForName" parameterClass="String">
+		drop TABLE $value$ purge
+	</statement>
+	
+	<insert id="FpisModUploadDAO.insertContractFromTemp" parameterClass="java.util.HashMap">
+		INSERT INTO REG_CONTRACT_TB
+		SELECT 
+			USR_MST_KEY,
+			REG_ID,
+			CONT_FROM,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			MODIFY_REQUEST,
+			NOPERMIT_REQUEST,
+			REQUEST_DATE,
+			'N' as COMFIRM_YN,
+			PERMIT_DATE,
+			UU_SEQ,
+			CONTRACT_GUBUN,
+			CHARGE
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertOperateFromTemp" parameterClass="java.util.HashMap">
+		INSERT INTO REG_OPERATE_TB
+		SELECT 
+			USR_MST_KEY,
+			REG_ID,
+			TRUST_ID,
+			CARS_MST_KEY,
+			END_TIME,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			SEQ,
+			CARS_REG_NUM,
+			UPDATE_SEQ,
+			UU_SEQ,
+			CHARGE
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	<insert id="FpisModUploadDAO.insertTrustFromTemp" parameterClass="java.util.HashMap">
+		INSERT INTO REG_TRUST_CONT_TB
+		SELECT 
+			USR_MST_KEY,
+			REG_ID,
+			TRUST_ID,
+			COMP_MST_KEY,
+			CONT_FROM,
+			REG_DATE,
+			UPD_DATE,
+			REG_USER,
+			UPD_USER,
+			PG_ID,
+			UU_SEQ,
+			CONTRACT_GUBUN,
+			CHARGE,
+			SUTAK_YN
+		FROM
+		(
+			SELECT 
+			rownum as r_num,INNER.*
+			FROM $tName$ INNER
+		) A
+		WHERE A.R_NUM > $start$ AND A.R_NUM <![CDATA[  < ]]> $end$
+	</insert>
+	
+	
+	
+	
+	
+	
+	
+    <select id="FpisModUploadDAO.checkRegModifyAllow" parameterClass="checkRegModifyAllowVO" resultClass="String">
+        SELECT PERMISSION_YN
+        FROM REG_UPD_PERMISSION
+        WHERE 1=1
+        AND SIGUNGU_CD = (select SIGUNGU_CD from USR_INFO WHERE USR_MST_KEY = (select SYS.XDB_ENC('normal', #usr_mst_key#) from DUAL) )
+        AND BASE_YEAR = #base_year#
+	</select>
+	
+	<select id="FpisModUploadDAO.checkUsrGov" parameterClass="checkRegModifyAllowVO" resultClass="checkRegModifyAllowVO">
+		select a.seq, a.office_seq, a.reg_date, b.status from (
+		select max(seq) as seq, office_seq,  max(REG_DATE) as reg_date
+		 from USR_GOV_HISTORY  
+		 where USR_MST_KEY = 
+		 (select SYS.XDB_ENC('normal', #usr_mst_key#)
+		 from DUAL) 
+		 group by office_seq   
+		 order by office_seq, reg_date desc) a,
+		 (
+		 select *
+		 from USR_GOV_HISTORY  
+		 where USR_MST_KEY = 
+		 (select SYS.XDB_ENC('normal', #usr_mst_key#)
+		 from DUAL) 
+		 ) b
+		 where a.seq = b.seq;
+	</select>
+	
+	
+	<!-- 18-12-11 jjh 분산신고 검증 쿼리 -->
+	<select id="FpisModUploadDAO.checkRegDivision" parameterClass="checkRegModifyAllowVO" resultClass="String">
+		select fn_reg_division(#usr_mst_key#) from dual;
+	</select>
+	
+	<!-- 18-12-13 jjh 업태차량 쿼리 -->
+	<select id="FpisModUploadDAO.checkRegLimit02" parameterClass="checkRegModifyAllowVO" resultClass="String">
+		select fn_reg_limit_sun_j(#usr_mst_key#,#reg_date#) from dual;
+	</select>
+	
+	<select id="FpisModUploadDAO.checkRegLimit03" parameterClass="checkRegModifyAllowVO" resultClass="String">
+		select fn_reg_limit_sun_gu(#usr_mst_key#,#reg_date#) from dual;
+	</select>
+	
+	<select id="FpisModUploadDAO.checkRegLimit04" parameterClass="checkRegModifyAllowVO" resultClass="String">
+		select fn_reg_limit_cdug_renewal(#usr_mst_key#,#reg_date#) from dual;
+	</select>	
+	
+	<select id="FpisModUploadDAO.getCompClsDetail" parameterClass="checkRegModifyAllowVO" resultClass="String">
+		select comp_cls_detail from usr_info 
+		where USR_MST_KEY = (select SYS.XDB_ENC('normal', #usr_mst_key#) from DUAL);
+	</select>
+    
+    <select id="FpisModUploadDAO.FpisChkNoRecordDeahang" parameterClass="java.util.Map" resultClass="String">
+        select 
+            sys.xdb_dec('normal',USR_MST_KEY) AS usr_mst_key
+        from 
+        REG_NO_RECORD 
+        where USR_MST_KEY = (select sys.xdb_enc('normal',#usrMstKey#) from dual) 
+        and RECORD_FLAG = 'empty_confirm'
+        and RECORD_YEAR = #recordYear# 
+        and RECORD_QUARTER = #recordQuarter#
+    </select>
+    
+    <select id="FpisModUploadDAO.getMangCode" resultClass="MangCodeVO">
+        SELECT CODE, CODE_NM 
+        FROM fpis_mang_code
+        WHERE USE_AT = 'Y' AND CODE NOT IN ('Y','N','00')
+        order by code asc;
+    </select>
+    
+    <!-- 2022.09.05 jwchoi 미가입자 -->
+    <select id="MassOrderDAO.checkAgencyUsrMstKey" parameterClass="java.lang.String" resultClass="Integer">
+        SELECT COUNT(1)
+        FROM comtngnrlmber
+        WHERE MBER_STTUS = 'P'
+        AND MBER_CLS = 'GNR'
+        AND USR_MST_KEY = (select sys.xdb_enc('normal',#usr_mst_key#) from dual);
+    </select>
+    
+    <!-- 2022.09.06 jwchoi 실적없음 신고 -->
+    <select id="MassOrderDAO.chkNoRecord" parameterClass="java.util.Map" resultClass="Integer">
+        select 
+            count(1) 
+        from 
+        REG_NO_RECORD 
+        where USR_MST_KEY = (select sys.xdb_enc('normal',#usrMstKey#) from dual) 
+        and RECORD_FLAG = 'empty_confirm'
+        and RECORD_YEAR = #recordYear#
+        and RECORD_QUARTER = #quarter#
+    </select>
+    
+    <!-- 2022.09.07 jwchoi 망사업자 개수 -->
+    <select id="FpisModUploadDAO.mangCodeCnt" resultClass="Integer">
+        SELECT count(1)
+        FROM fpis_mang_code
+        WHERE USE_AT = 'Y' AND CODE NOT IN ('Y','N','00')
+    </select>
+    
+    <insert id="MassOrderDAO.insertRegUploadResult" parameterClass="java.util.Map">
+    	INSERT INTO REG_UPLOAD_RESULT
+    	(
+    		USR_MST_KEY,
+    		PG_ID,
+    		UPLOAD_DATE,
+    		UPLOAD_Y_DATE,
+    		UPLOAD_YN,
+    		UPLOAD_CODE,
+    		FILENAME,
+    		MOD_MATCH_KEY
+    	)
+    	VALUES
+    	(
+    		(select sys.xdb_enc('normal',#usrmstkey#) from dual),
+    		'',
+    		SYSDATE,
+    		SYSDATE,
+    		'N',
+    		'0',
+    		#filename#,
+    		#modmatchkey#
+    	)
+	</insert>
+	
+   <!-- 2022.11.09 jwchoi 웹연계 대량실적 업로드 upload_flag [확인]여부 -->
+    <select id="MassOrderDAO.getUploadFileCnt" parameterClass="java.lang.String" resultClass="Integer">
+    	SELECT 
+	    	COUNT(1)
+	    FROM
+	        REG_UPLOAD_RESULT
+	        WHERE USR_MST_KEY = (select sys.xdb_enc('normal',#usrMstKey#) from dual) 
+	        AND UPLOAD_YN = 'N'
+    </select>
+
+<!-- 2022.11.09 jwchoi 웹연계 대량실적 업로드 upload_flag [확인]여부 -->
+    <select id="MassOrderDAO.getUploadFileList" parameterClass="java.lang.String" resultClass="java.util.HashMap">
+    	SELECT 
+	    	FILENAME, UPLOAD_CODE
+	    FROM
+	        REG_UPLOAD_RESULT
+	        WHERE USR_MST_KEY = (select sys.xdb_enc('normal',#usrMstKey#) from dual) 
+	        AND UPLOAD_YN = 'N'
+    </select>
+    
+<!-- 2022.11.10 jwchoi 웹연계 대량실적 업로드 upload_flag 'Y' -->
+    <update id="MassOrderDAO.updateUploadResultY" parameterClass="java.lang.String">
+    	UPDATE REG_UPLOAD_RESULT
+    	SET
+	    	UPLOAD_YN = 'Y',
+	    	UPLOAD_Y_DATE = SYSDATE
+	    WHERE USR_MST_KEY = (select sys.xdb_enc('normal',#usrMstKey#) from dual)
+    </update>
+    
+<!-- 2023.01.17 jwchoi 화물우수인증정보망 개수 가져오기 -->
+	<select id="MassOrderDAO.getMangMaxValue" resultClass="String">
+	SELECT CODE FROM (
+		SELECT CODE FROM FPIS_MANG_CODE ORDER BY FRST_REG_DATE DESC)
+	WHERE ROWNUM = 1
+    </select>
+    
+<!-- 2023.04.10 jwchoi 화물우수인증정보망 유효한지 확인 -->
+	<select id="MassOrderDAO.getVstring" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	select count(*) from 
+		comtccmmndetailcode
+	where code_id = 'FMS031'
+		and use_at = 'Y'
+		and code = #vString#
+    </select>
+    
+    <!-- 2023.06.07 jwchoi 계약고유번호 검증 -->
+	<insert id="MassOrderDAO.insertIdentifyData" parameterClass="java.util.Map">
+		INSERT INTO reg_module_identify(
+			UUID
+			,EXCEL_ROW
+			,AGENCY_USR_MST_KEY
+			,CONTRACT_GUBUN
+			,CONT_FROM
+			,CHARGE
+			,DEL_TYPE
+			,TRANS_TYPE
+		) VALUES (
+			#uuid#
+			,#excel_row#
+			,#agency_usr_mst_key#
+			,#contract_gubun#
+			,#cont_from#
+			,#charge#
+			,#del_type#
+			,#trans_type#
+		)
+	</insert>
+	
+	<!-- 2023.06.08 jwchoi 계약고유번호 검증 -->
+	<select id="MassOrderDAO.selectIdentifyData" parameterClass="java.lang.String" resultMap="ContractInfoVO">
+	WITH GUBUN_TABLE AS (
+		SELECT CONTRACT_GUBUN FROM (
+			SELECT AGENCY_USR_MST_KEY, CONTRACT_GUBUN, CONT_FROM, CHARGE, DEL_TYPE, TRANS_TYPE FROM REG_MODULE_IDENTIFY
+			WHERE uuid = #uuid#
+			GROUP BY AGENCY_USR_MST_KEY, CONTRACT_GUBUN, cont_from, CHARGE, del_type, trans_type)
+		GROUP BY contract_gubun HAVING count(1) > 1
+	)
+	SELECT EXCEL_ROW as CONTRACTCOUNT, CONTRACT_GUBUN as CONT_M_KEY FROM REG_MODULE_IDENTIFY
+		WHERE uuid = #uuid#
+		AND CONTRACT_GUBUN IN (
+			SELECT * FROM GUBUN_TABLE
+		);
+	</select>
+</sqlMap>
